@@ -18,8 +18,9 @@ public class detector2 {
 	public static int thresholdOfNoY=200;
 	public static int thresholdOfY=265;//250;//200;
 	
+	public static int consecutiveVofY_bool_chk=50;
 	public static int ped_after_veh_buffer=4;
-	
+	public static int veh_after_ped_buffer=140;//400;
 	public static ArrayList<Vehicle> vehicleList=new ArrayList<Vehicle>();
 	public static ArrayList<Pedestrian> pedestrianList=new ArrayList<Pedestrian>();
 	
@@ -170,7 +171,7 @@ public class detector2 {
 //		LoadData("ped_track_j_GOPR4109.json", "car_track_j_GOPR4109.json");
 //		LoadData("ped_track_j_GOPR4106.json", "car_track_j_GOPR4106.json");
 
-		LoadData("ped_track_j_GH050228.json", "car_track_j_GH050228.json");
+		LoadData("ped_track_j_GH100228.json", "car_track_j_GH100228.json");
 		int npoints=4;
 		int[] xpoints=new int[npoints];
 		int[] ypoints=new int[npoints];
@@ -376,7 +377,8 @@ public class detector2 {
 				 */
 				
 				boolean consecutiveVofY_bool=true;
-				if(P_timeOut<=V_timeIn || P_timeIn<=V_timeIn) {
+//				if((P_timeOut+consecutiveVofY_bool_chk<=V_timeIn || P_timeIn<=V_timeIn)) {
+				if((P_timeOut+consecutiveVofY_bool_chk<=V_timeIn)) {
 					int conse=consecutiveVofY(P_timeIn, V_timeIn, vehID2timeIn, vehID2timeOut);
 					/*if(p_id==357 && v_id==122) {
 						System.out.println("GGGGGGGGGGGGGG - "+""+conse);
@@ -436,19 +438,24 @@ public class detector2 {
 									));
 					}*/
 				
-				if(v_id==98 && p_id==214) {
-					System.out.println(V_timeIn+"\t"+V_timeOut
+/*//				if(v_id==267 && p_id==355) {
+				if(v_id==267) {
+					System.out.println(p_id+"\t"+V_timeIn+"\t"+V_timeOut
 							+"\t"+P_timeIn
-							+"\t"+P_timeOut);
-				}
+							+"\t"+P_timeOut
+							+"\t"+(!(V_timeIn-P_timeOut>thresholdOfY))
+							+"\t"+(!(P_timeIn-V_timeOut>thresholdOfNoY))
+							+"\t"+consecutiveVofY_bool
+							+"\t"+VsInBetween);
+				}*/
 				
 //				if(!((V_theFirstTime>=P_theLastTime)||(P_theFirstTime>=V_theLastTime))) {
 				if(!((V_theFirstTime>=P_timeOut)||(P_theFirstTime>=V_timeOut))
 //						&& (V_timeOut-P_timeOut>=0 || P_timeIn-V_timeIn>=0)
 						&& (!(V_timeIn-P_timeOut>thresholdOfY))
 						&& (!(P_timeIn-V_timeOut>thresholdOfNoY))
-						&& (P_timeOut-P_timeIn<=2700) // (P_timeOut-P_timeIn<=4000)
-						&& (V_timeOut-V_timeIn<=200)
+						&& (P_timeOut-P_timeIn<=1300) // (P_timeOut-P_timeIn<=2700) // (P_timeOut-P_timeIn<=4000)
+						&& (V_timeOut-V_timeIn<=350)
 						&& consecutiveVofY_bool
 						&& VsInBetween
 						) {
@@ -464,7 +471,8 @@ public class detector2 {
 						break;
 					}*/
 						
-					if(P_timeIn>=V_timeOut-ped_after_veh_buffer) { //
+					if((P_timeIn>=V_timeOut-ped_after_veh_buffer) || 
+							(P_timeIn<V_timeIn && P_timeOut-V_timeOut>veh_after_ped_buffer)) { //
 						yield=false;
 //						break;
 					}
