@@ -6,20 +6,19 @@ public class track {
 
 	public int Id;
 	public ArrayList<detection> trajs;
-	
-	public track(int Id, ArrayList<detection> trajs) {
-		this.Id=Id;
-		this.trajs=new ArrayList<detection>(trajs);
-	}
-	
+
 	public track(int Id) {
-		this.Id=Id;
-		this.trajs=new ArrayList<detection>();
+		this.Id = Id;
+		this.trajs = new ArrayList<detection>();
 	}
-	
+
+	public track(int Id, ArrayList<detection> trajs) {
+		this.Id = Id;
+		this.trajs = new ArrayList<detection>(trajs);
+	}
+
 	public track(track t) {
-		this.Id=t.Id;
-		this.trajs=new ArrayList<detection>(t.trajs);
+		this.Id = t.Id;
+		this.trajs = new ArrayList<detection>(t.trajs);
 	}
 }
-
