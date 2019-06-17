@@ -18,7 +18,7 @@ public class pedyield_detector {
 	public static int p_walk_through = (int) (fps * (1.0));
 
 	public static void main(String[] args) throws IOException {
-		for (int i = 1; i <= 10; i++) {
+		for (int i = 1; i <= 1; i++) {
 			System.out.println("File - " + i);
 			if (i < 10)
 				pedyield_detector_run("GH0" + i + "0228_2_1920-1080-59_0.5_0.3_ped.csv",
