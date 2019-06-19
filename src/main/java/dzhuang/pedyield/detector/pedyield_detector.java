@@ -1,11 +1,25 @@
 package dzhuang.pedyield.detector;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 public class pedyield_detector {
@@ -14,26 +28,109 @@ public class pedyield_detector {
 
 	public static int thresholdOfNoY = 200;
 	public static int thresholdOfY = 265;
-
-	public static int fps = 60;
-
-	public static int p_dangerous2out = (int) (fps * (0.1));
-	public static int v_dangerous2out = (int) (fps * (0.05)); // v_dangerous2out << p_dangerous2out
-	public static int p_walk_through = (int) (fps * (1.0));
+	public static double p_dangerous2out_buffer_threshold = 0.1;
+	public static double v_dangerous2out_buffer_threshold = 0.05;
+	// v_dangerous2out_buffer_threshold << p_dangerous2out_buffer_threshold
+	public static double p_walk_through_buffer_threshold = 1.0;
 
 	public static void main(String[] args) throws IOException, SAXException, ParserConfigurationException {
-		for (int i = 1; i <= 1; i++) {
-			System.out.println("File - " + i);
-			if (i < 10)
-				pedyield_detector_run("GH0" + i + "0228_2_1920-1080-59_0.5_0.3_ped.csv",
-						"GH0" + i + "0228_2_1920-1080-59_0.5_0.3_car.csv");
-			else
-				pedyield_detector_run("GH" + i + "0228_2_1920-1080-59_0.5_0.3_ped.csv",
-						"GH" + i + "0228_2_1920-1080-59_0.5_0.3_car.csv");
+		Options options = new Options();
+		Option input = new Option("ip", "ped_input", true, "input file path of the pedestrian data");
+		input.setRequired(true);
+		options.addOption(input);
+
+		Option output = new Option("iv", "veh_output", true, "input file path of the vehicle data");
+		output.setRequired(true);
+		options.addOption(output);
+
+		Option threshold_not_yield = new Option("t1", "threshold_not_yield", true, "the threshold of not yield");
+		output.setRequired(false);
+		options.addOption(threshold_not_yield);
+
+		Option threshold_yield = new Option("t2", "threshold_yield", true, "the threshold of yield");
+		output.setRequired(false);
+		options.addOption(threshold_yield);
+
+		CommandLineParser parser = new DefaultParser();
+		HelpFormatter formatter = new HelpFormatter();
+		CommandLine cmd = null;
+
+		try {
+			cmd = parser.parse(options, args);
+		} catch (ParseException e) {
+			System.out.println(e.getMessage());
+			formatter.printHelp("utility-name", options);
+
+			// just for testing
+			pedyield_detector_run("GH0" + 1 + "0228_2_1920-1080-59_0.5_0.3_ped.csv",
+					"GH0" + 1 + "0228_2_1920-1080-59_0.5_0.3_car.csv");
+
+			System.exit(1);
 		}
+
+		String inputFilePath_p = cmd.getOptionValue("ped_input");
+		String inputFilePath_v = cmd.getOptionValue("veh_output");
+
+		if (cmd.hasOption("threshold_not_yield") && cmd.hasOption("threshold_yield")) {
+			int t1 = Integer.parseInt(cmd.getOptionValue("threshold_not_yield"));
+			int t2 = Integer.parseInt(cmd.getOptionValue("threshold_yield"));
+			pedyield_detector_run(inputFilePath_p, inputFilePath_v, t1, t2);
+		} else if (cmd.hasOption("threshold_not_yield") && !cmd.hasOption("threshold_yield")) {
+			System.out.println("Please provide both thresholds!");
+		} else if (!cmd.hasOption("threshold_not_yield") && cmd.hasOption("threshold_yield")) {
+			System.out.println("Please provide both thresholds!");
+		} else {
+			pedyield_detector_run(inputFilePath_p, inputFilePath_v);
+		}
+
+//		pedyield_detector_run("GH0" + 1 + "0228_2_1920-1080-59_0.5_0.3_ped.csv", "GH0" + 1 + "0228_2_1920-1080-59_0.5_0.3_car.csv");
+
 	}
 
-	public static void pedyield_detector_run(String pedInput, String vehInput) throws IOException, SAXException, ParserConfigurationException {
+	public static void pedyield_detector_run(String pedInput, String vehInput)
+			throws IOException, SAXException, ParserConfigurationException {
+		pedyield_detector_run(pedInput, vehInput, thresholdOfNoY, thresholdOfY, p_dangerous2out_buffer_threshold,
+				v_dangerous2out_buffer_threshold, p_walk_through_buffer_threshold);
+	}
+
+	public static void pedyield_detector_run(String pedInput, String vehInput, int thresholdOfNoY_, int thresholdOfY_)
+			throws IOException, SAXException, ParserConfigurationException {
+		pedyield_detector_run(pedInput, vehInput, thresholdOfNoY_, thresholdOfY_, p_dangerous2out_buffer_threshold,
+				v_dangerous2out_buffer_threshold, p_walk_through_buffer_threshold);
+	}
+
+	public static void pedyield_detector_run(String pedInput, String vehInput, int thresholdOfNoY_, int thresholdOfY_,
+			double p_dangerous2out_buffer_threshold_, double v_dangerous2out_buffer_threshold_,
+			double p_walk_through_buffer_threshold_) throws IOException, SAXException, ParserConfigurationException {
+		thresholdOfNoY = thresholdOfNoY_;
+		thresholdOfY = thresholdOfY_;
+		p_dangerous2out_buffer_threshold = p_dangerous2out_buffer_threshold_;
+		v_dangerous2out_buffer_threshold = v_dangerous2out_buffer_threshold_;
+		p_walk_through_buffer_threshold = p_walk_through_buffer_threshold_;
+
+		double fps_double = 0.0;
+		int fps = -1;
+
+		// read in configure/configure.xml
+		File fXmlFile = new File("configure/configure.xml");
+		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+		Document doc = dBuilder.parse(fXmlFile);
+		doc.getDocumentElement().normalize();
+		NodeList nList = doc.getElementsByTagName("conf");
+		for (int i = 0; i < nList.getLength(); i++) {
+			Node node = nList.item(i);
+			if (node.getNodeType() == Node.ELEMENT_NODE) {
+				Element eElement = (Element) node;
+				fps = Integer.parseInt(eElement.getElementsByTagName("fps_int").item(0).getTextContent());
+				fps_double = Double.parseDouble(eElement.getElementsByTagName("fps_double").item(0).getTextContent());
+			}
+		}
+
+		int p_dangerous2out = (int) (fps * (p_dangerous2out_buffer_threshold));
+		int v_dangerous2out = (int) (fps * (v_dangerous2out_buffer_threshold)); // v_dangerous2out << p_dangerous2out
+		int p_walk_through = (int) (fps * (p_walk_through_buffer_threshold));
+
 		pedestrian_list = new ArrayList<pedestrian>(util_detector.load_pedestrian_list(pedInput));
 		vehicle_list = new ArrayList<vehicle>(util_detector.load_vehicle_list(vehInput));
 		/*************************************************************************************/
@@ -46,7 +143,7 @@ public class pedyield_detector {
 			String minS = "";
 			String secS = "";
 			for (pedestrian pi : pedestrian_list) {
-				double tme = vi.theFirstFrame_in_aoi / 59.84;
+				double tme = vi.theFirstFrame_in_aoi / fps_double;
 				int min = (int) (tme / 60);
 				int sec = (int) (tme % 60);
 

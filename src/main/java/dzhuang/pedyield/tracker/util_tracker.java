@@ -30,8 +30,7 @@ public class util_tracker {
 		if ((overlap_x1 - overlap_x0 <= 0) || (overlap_y1 - overlap_y0 <= 0))
 			return 0.0;
 
-		// if yes, calculate the ratio of the overlap to each ROI size and the unified
-		// size
+		// if yes, calculate the ratio of the overlap to the overall
 		int size_1 = (x1_1 - x0_1) * (y1_1 - y0_1);
 		int size_2 = (x1_2 - x0_2) * (y1_2 - y0_2);
 		int size_intersection = (overlap_x1 - overlap_x0) * (overlap_y1 - overlap_y0);
@@ -42,7 +41,7 @@ public class util_tracker {
 
 	public static LinkedHashMap<Integer, ArrayList<detection>> load_mot(String input) throws IOException {
 		// load the object detection results
-		
+
 		LinkedHashMap<Integer, ArrayList<detection>> data = new LinkedHashMap<Integer, ArrayList<detection>>();
 
 		BufferedReader br = new BufferedReader(new FileReader(input));
@@ -97,7 +96,7 @@ public class util_tracker {
 
 	public static double radius(Position position1, Position position2) {
 		// the distance between two objects
-		
+
 		double x1 = position1.x;
 		double y1 = position1.y;
 		double x2 = position2.x;

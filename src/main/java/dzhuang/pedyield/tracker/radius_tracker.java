@@ -24,18 +24,9 @@ import org.xml.sax.SAXException;
 
 public class radius_tracker { // for pedestrian tracking
 	public static String[] pedestrian_type = { "person" };
-	
-	public static void main(String[] args) throws IOException, SAXException, ParserConfigurationException {
-		/*for (int i = 1; i <= 10; i++) {
-			System.out.println("File - " + i);
-			if (i < 10)
-				track_radius("GH0" + i + "0228_2_1920-1080-59_0.5_0.3_ped.csv", 0.3, 10.0, 10.0, 1.0, 60, 125.0, 0.5, 10, 1.0);
-			else
-				track_radius("GH" + i + "0228_2_1920-1080-59_0.5_0.3_ped.csv", 0.3, 10.0, 10.0, 1.0, 60, 125.0, 0.5, 10, 1.0);
-		}*/
-	}
 
-	public static double[] predict_radius_direction(int frame_diff, track track_cur, int watch_back, double ex_b) { // get the possible next direction for each pedestrian object
+	public static double[] predict_radius_direction(int frame_diff, track track_cur, int watch_back, double ex_b) {
+		// get the possible next direction for each pedestrian object
 		// 0:x_1-x_0>0, y_1-y_0>0
 		// 1:x_1-x_0>0, y_1-y_0=0
 		// 2:x_1-x_0>0, y_1-y_0<0
@@ -121,14 +112,17 @@ public class radius_tracker { // for pedestrian tracking
 			}
 
 			for (int i = 0; i < direction_prob.length; i++) {
-				direction_prob[i] = direction_prob[i] / (cnt + 1); // the probability of each direction of the next move
+				// the probability of each direction of the next move
+				direction_prob[i] = direction_prob[i] / (cnt + 1);
 			}
 		}
 
-		return softmax(direction_prob, frame_diff * attenuation_rate + 1, ex_b); // use softmax to normalize the probabilities
+		// use softmax to normalize the probabilities
+		return softmax(direction_prob, frame_diff * attenuation_rate + 1, ex_b);
 	}
 
-	public static double predict_radius_threshold(int frame_diff, track track_cur, double sigma_radius) { // get the distance threshold for each pedestrian object
+	public static double predict_radius_threshold(int frame_diff, track track_cur, double sigma_radius) {
+		// get the distance threshold for each pedestrian object
 		int total_frame = track_cur.trajs.size();
 		double attenuation_rate = 0.9; // between 0.8-1.0, do not need to change much
 
@@ -169,13 +163,15 @@ public class radius_tracker { // for pedestrian tracking
 				}
 				avg_dis_move = avg_dis_move / (frame_diff);
 			}
-			double move_one_frame = avg_dis_move > sigma_radius ? avg_dis_move : sigma_radius; // moving distance of one frame by average
+			// moving distance of one frame by average
+			double move_one_frame = avg_dis_move > sigma_radius ? avg_dis_move : sigma_radius;
 
 			return move_one_frame * frame_diff * attenuation_rate;
 		}
 	}
 
-	public static double[] softmax(double[] z, double b, double ex_b) { // softmax distance function
+	public static double[] softmax(double[] z, double b, double ex_b) {
+		// softmax distance function
 		double sum = 0;
 		for (int i = 0; i < z.length; i++) {
 			sum += Math.exp(ex_b * b * z[i]);
@@ -190,157 +186,123 @@ public class radius_tracker { // for pedestrian tracking
 	}
 
 	public static LinkedHashMap<Integer, track> track_radius(LinkedHashMap<Integer, ArrayList<detection>> data,
-			double sigma_l, double radius_pedestrian_remove, double sigma_radius, double t_seconds, int fps, double radius_ttl_limit, double direction_look_back_seconds, int direction_look_back_steps, double ex_b, String output)
-			throws ParserConfigurationException, SAXException, IOException { // tracking algorithm
+			double sigma_l, double radius_pedestrian_remove, double sigma_radius, double t_seconds, int fps,
+			double radius_ttl_limit, double direction_look_back_seconds, int direction_look_back_steps, double ex_b,
+			String output) throws ParserConfigurationException, SAXException, IOException { // tracking algorithm
 		int TTL = (int) (t_seconds * fps);
 		direction_look_back_steps = (int) (direction_look_back_seconds * fps);
 
 		/************************************************************/
-/*
-		int npoints_pedestrian_valid = 4;
-		int[] xpoints_pedestrian_valid = new int[npoints_pedestrian_valid];
-		int[] ypoints_pedestrian_valid = new int[npoints_pedestrian_valid];
-		xpoints_pedestrian_valid[0] = 1400;
-		ypoints_pedestrian_valid[0] = 290;
-		xpoints_pedestrian_valid[1] = 1580;
-		ypoints_pedestrian_valid[1] = 400;
-		xpoints_pedestrian_valid[2] = 1130;
-		ypoints_pedestrian_valid[2] = 1080;
-		xpoints_pedestrian_valid[3] = 700;
-		ypoints_pedestrian_valid[3] = 600;
-		Polygon pedestrian_valid_area = new Polygon(xpoints_pedestrian_valid, ypoints_pedestrian_valid,
-				npoints_pedestrian_valid);
-
-		int npoints_pedestrian_init_top = 4;
-		int[] xpoints_pedestrian_init_top = new int[npoints_pedestrian_init_top];
-		int[] ypoints_pedestrian_init_top = new int[npoints_pedestrian_init_top];
-		xpoints_pedestrian_init_top[0] = 1400;
-		ypoints_pedestrian_init_top[0] = 290;
-		xpoints_pedestrian_init_top[1] = 1580;
-		ypoints_pedestrian_init_top[1] = 400;
-		xpoints_pedestrian_init_top[2] = 1560;
-		ypoints_pedestrian_init_top[2] = 500;
-		xpoints_pedestrian_init_top[3] = 1300;
-		ypoints_pedestrian_init_top[3] = 325;
-		Polygon pedestrian_init_top_area = new Polygon(xpoints_pedestrian_init_top, ypoints_pedestrian_init_top,
-				npoints_pedestrian_init_top);
-
-		int npoints_pedestrian_init_bottom = 4;
-		int[] xpoints_pedestrian_init_bottom = new int[npoints_pedestrian_init_bottom];
-		int[] ypoints_pedestrian_init_bottom = new int[npoints_pedestrian_init_bottom];
-		xpoints_pedestrian_init_bottom[0] = 1000;
-		ypoints_pedestrian_init_bottom[0] = 450;
-		xpoints_pedestrian_init_bottom[1] = 1480;
-		ypoints_pedestrian_init_bottom[1] = 610;
-		xpoints_pedestrian_init_bottom[2] = 1130;
-		ypoints_pedestrian_init_bottom[2] = 1080;
-		xpoints_pedestrian_init_bottom[3] = 700;
-		ypoints_pedestrian_init_bottom[3] = 600;
-		Polygon pedestrian_init_bottom_area = new Polygon(xpoints_pedestrian_init_bottom,
-				ypoints_pedestrian_init_bottom, npoints_pedestrian_init_bottom);
-*/
-		
-		//read in configure/configure.xml
+		// read in configure/configure.xml
 		File fXmlFile = new File("configure/configure.xml");
 		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
 		Document doc = dBuilder.parse(fXmlFile);
 		doc.getDocumentElement().normalize();
-				
+
 		// pedestrian_type
 		NodeList nList = doc.getElementsByTagName("pedestrian_type");
-		for(int i=0;i<nList.getLength();i++) {
+		for (int i = 0; i < nList.getLength(); i++) {
 			Node node = nList.item(i);
 			if (node.getNodeType() == Node.ELEMENT_NODE) {
 				Element eElement = (Element) node;
-				pedestrian_type=new String[eElement.getElementsByTagName("ptype").getLength()];
-				for(int j=0;j<eElement.getElementsByTagName("ptype").getLength();j++) {
-					pedestrian_type[j]=eElement.getElementsByTagName("ptype").item(j).getTextContent();
+				pedestrian_type = new String[eElement.getElementsByTagName("ptype").getLength()];
+				for (int j = 0; j < eElement.getElementsByTagName("ptype").getLength(); j++) {
+					pedestrian_type[j] = eElement.getElementsByTagName("ptype").item(j).getTextContent();
 				}
 			}
 		}
-						
+
 		// pedestrian_init_top_area
-		int npoints_pedestrian_init_top=-1;
-		int[] xpoints_pedestrian_init_top=null;
-		int[] ypoints_pedestrian_init_top=null;
+		int npoints_pedestrian_init_top = -1;
+		int[] xpoints_pedestrian_init_top = null;
+		int[] ypoints_pedestrian_init_top = null;
 		nList = doc.getElementsByTagName("pedestrian_init_top_area");
-		for(int i=0;i<nList.getLength();i++) {
+		for (int i = 0; i < nList.getLength(); i++) {
 			Node node = nList.item(i);
 			if (node.getNodeType() == Node.ELEMENT_NODE) {
 				Element eElement = (Element) node;
-						
-				npoints_pedestrian_init_top = Integer.parseInt(eElement.getElementsByTagName("npoints_pedestrian_init_top").item(0).getTextContent());
+
+				npoints_pedestrian_init_top = Integer.parseInt(
+						eElement.getElementsByTagName("npoints_pedestrian_init_top").item(0).getTextContent());
 				xpoints_pedestrian_init_top = new int[npoints_pedestrian_init_top];
 				ypoints_pedestrian_init_top = new int[npoints_pedestrian_init_top];
-				
-				for(int j=0;j<eElement.getElementsByTagName("point").getLength();j++) {
+
+				for (int j = 0; j < eElement.getElementsByTagName("point").getLength(); j++) {
 					Node node_point = eElement.getElementsByTagName("point").item(j);
 					if (node_point.getNodeType() == Node.ELEMENT_NODE) {
 						Element eElement_point = (Element) node_point;
-						xpoints_pedestrian_init_top[j]=Integer.parseInt(eElement_point.getElementsByTagName("x").item(0).getTextContent());
-						ypoints_pedestrian_init_top[j]=Integer.parseInt(eElement_point.getElementsByTagName("y").item(0).getTextContent());
+						xpoints_pedestrian_init_top[j] = Integer
+								.parseInt(eElement_point.getElementsByTagName("x").item(0).getTextContent());
+						ypoints_pedestrian_init_top[j] = Integer
+								.parseInt(eElement_point.getElementsByTagName("y").item(0).getTextContent());
 					}
 				}
 			}
 		}
-			
+
 		// pedestrian_init_bottom_area
-		int npoints_pedestrian_init_bottom=-1;
-		int[] xpoints_pedestrian_init_bottom=null;
-		int[] ypoints_pedestrian_init_bottom=null;
+		int npoints_pedestrian_init_bottom = -1;
+		int[] xpoints_pedestrian_init_bottom = null;
+		int[] ypoints_pedestrian_init_bottom = null;
 		nList = doc.getElementsByTagName("pedestrian_init_bottom_area");
-		for(int i=0;i<nList.getLength();i++) {
+		for (int i = 0; i < nList.getLength(); i++) {
 			Node node = nList.item(i);
 			if (node.getNodeType() == Node.ELEMENT_NODE) {
 				Element eElement = (Element) node;
-						
-				npoints_pedestrian_init_bottom = Integer.parseInt(eElement.getElementsByTagName("npoints_pedestrian_init_bottom").item(0).getTextContent());
+
+				npoints_pedestrian_init_bottom = Integer.parseInt(
+						eElement.getElementsByTagName("npoints_pedestrian_init_bottom").item(0).getTextContent());
 				xpoints_pedestrian_init_bottom = new int[npoints_pedestrian_init_bottom];
 				ypoints_pedestrian_init_bottom = new int[npoints_pedestrian_init_bottom];
-				
-				for(int j=0;j<eElement.getElementsByTagName("point").getLength();j++) {
+
+				for (int j = 0; j < eElement.getElementsByTagName("point").getLength(); j++) {
 					Node node_point = eElement.getElementsByTagName("point").item(j);
 					if (node_point.getNodeType() == Node.ELEMENT_NODE) {
 						Element eElement_point = (Element) node_point;
-						xpoints_pedestrian_init_bottom[j]=Integer.parseInt(eElement_point.getElementsByTagName("x").item(0).getTextContent());
-						ypoints_pedestrian_init_bottom[j]=Integer.parseInt(eElement_point.getElementsByTagName("y").item(0).getTextContent());
+						xpoints_pedestrian_init_bottom[j] = Integer
+								.parseInt(eElement_point.getElementsByTagName("x").item(0).getTextContent());
+						ypoints_pedestrian_init_bottom[j] = Integer
+								.parseInt(eElement_point.getElementsByTagName("y").item(0).getTextContent());
 					}
 				}
 			}
 		}
-				
+
 		// pedestrian_valid_area
-		int npoints_pedestrian_valid=-1;
-		int[] xpoints_pedestrian_valid=null;
-		int[] ypoints_pedestrian_valid=null;
+		int npoints_pedestrian_valid = -1;
+		int[] xpoints_pedestrian_valid = null;
+		int[] ypoints_pedestrian_valid = null;
 		nList = doc.getElementsByTagName("pedestrian_valid_area");
-		for(int i=0;i<nList.getLength();i++) {
+		for (int i = 0; i < nList.getLength(); i++) {
 			Node node = nList.item(i);
 			if (node.getNodeType() == Node.ELEMENT_NODE) {
 				Element eElement = (Element) node;
-				
-				npoints_pedestrian_valid=Integer.parseInt(eElement.getElementsByTagName("npoints_pedestrian_valid").item(0).getTextContent());
+
+				npoints_pedestrian_valid = Integer
+						.parseInt(eElement.getElementsByTagName("npoints_pedestrian_valid").item(0).getTextContent());
 				xpoints_pedestrian_valid = new int[npoints_pedestrian_valid];
 				ypoints_pedestrian_valid = new int[npoints_pedestrian_valid];
-				
-				for(int j=0;j<eElement.getElementsByTagName("point").getLength();j++) {
+
+				for (int j = 0; j < eElement.getElementsByTagName("point").getLength(); j++) {
 					Node node_point = eElement.getElementsByTagName("point").item(j);
 					if (node_point.getNodeType() == Node.ELEMENT_NODE) {
 						Element eElement_point = (Element) node_point;
-						xpoints_pedestrian_valid[j]=Integer.parseInt(eElement_point.getElementsByTagName("x").item(0).getTextContent());
-						ypoints_pedestrian_valid[j]=Integer.parseInt(eElement_point.getElementsByTagName("y").item(0).getTextContent());
+						xpoints_pedestrian_valid[j] = Integer
+								.parseInt(eElement_point.getElementsByTagName("x").item(0).getTextContent());
+						ypoints_pedestrian_valid[j] = Integer
+								.parseInt(eElement_point.getElementsByTagName("y").item(0).getTextContent());
 					}
 				}
 			}
 		}
-						
+
 		Polygon pedestrian_valid_area = new Polygon(xpoints_pedestrian_valid, ypoints_pedestrian_valid,
 				npoints_pedestrian_valid);
 		Polygon pedestrian_init_top_area = new Polygon(xpoints_pedestrian_init_top, ypoints_pedestrian_init_top,
 				npoints_pedestrian_init_top);
 		Polygon pedestrian_init_bottom_area = new Polygon(xpoints_pedestrian_init_bottom,
-				ypoints_pedestrian_init_bottom, npoints_pedestrian_init_bottom);		
+				ypoints_pedestrian_init_bottom, npoints_pedestrian_init_bottom);
 		/************************************************************/
 		HashSet<String> objs_pedestrian_type = new HashSet<String>(Arrays.asList(pedestrian_type));
 
@@ -585,46 +547,91 @@ public class radius_tracker { // for pedestrian tracking
 
 	/**
 	 * @param input: input directory
-	 * @param sigma_l: lowest probability of the object detection results be be considered, [0.3, 0.5]
-	 * @param radius_pedestrian_remove: threshold of pedestrian moving distance in the same frame to remove the duplicates [10.0]
-	 * @param sigma_radius: the distance threshold for each pedestrian object, [5.0, 20.0]
-	 * @param t_seconds: the ttl seconds to handle the missing detections, [0.5, 1.5]
+	 * @param sigma_l: lowest probability of the object detection results be be
+	 *        considered, [0.3, 0.5]
+	 * @param radius_pedestrian_remove: threshold of pedestrian moving distance in
+	 *        the same frame to remove the duplicates [10.0]
+	 * @param sigma_radius: the distance threshold for each pedestrian object, [5.0,
+	 *        20.0]
+	 * @param t_seconds: the ttl seconds to handle the missing detections, [0.5,
+	 *        1.5]
 	 * @param fps: the fps of the video
-	 * @param radius_ttl_limit: max distance of pedestrian moving during missing detections [125.0]
-	 * @param direction_look_back_seconds: seconds to look back to learn the next possible direction [0.5]
-	 * @param direction_look_back_steps: frames to look back to learn the next possible direction [10]
+	 * @param radius_ttl_limit: max distance of pedestrian moving during missing
+	 *        detections [125.0]
+	 * @param direction_look_back_seconds: seconds to look back to learn the next
+	 *        possible direction [0.5]
+	 * @param direction_look_back_steps: frames to look back to learn the next
+	 *        possible direction [10]
 	 * @param ex_b: the control the softmax normalization [1.0]
-	 * @throws IOException 
-	 * @throws SAXException 
-	 * @throws ParserConfigurationException 
+	 * @throws IOException
+	 * @throws SAXException
+	 * @throws ParserConfigurationException
 	 * 
-	 * */
-	public static LinkedHashMap<Integer, track> track_radius(String input, double sigma_l, double radius_pedestrian_remove, 
-			double sigma_radius, double t_seconds, int fps, double radius_ttl_limit, double direction_look_back_seconds, int direction_look_back_steps, double ex_b) throws ParserConfigurationException, SAXException, IOException { // function to be called, return a list of tracks
+	 */
+	public static LinkedHashMap<Integer, track> track_radius(String input, double sigma_l,
+			double radius_pedestrian_remove, double sigma_radius, double t_seconds, int fps, double radius_ttl_limit,
+			double direction_look_back_seconds, int direction_look_back_steps, double ex_b)
+			throws ParserConfigurationException, SAXException, IOException {
+		// function to be called, return a list of tracks
 		LinkedHashMap<Integer, ArrayList<detection>> data = util_tracker.load_mot(input);
-		LinkedHashMap<Integer, track> tracks = track_radius(data, sigma_l, radius_pedestrian_remove, sigma_radius, t_seconds, fps, radius_ttl_limit, direction_look_back_seconds, direction_look_back_steps, ex_b, 
+		LinkedHashMap<Integer, track> tracks = track_radius(data, sigma_l, radius_pedestrian_remove, sigma_radius,
+				t_seconds, fps, radius_ttl_limit, direction_look_back_seconds, direction_look_back_steps, ex_b,
 				"track_" + input);
 		return tracks;
 	}
-	
-	public static LinkedHashMap<Integer, track> track_radius(String input, double sigma_l, double radius_pedestrian_remove, 
-			double sigma_radius, double t_seconds, int fps) throws IOException, ParserConfigurationException, SAXException { // function to be called, return a list of tracks
+
+	public static LinkedHashMap<Integer, track> track_radius(String input, double sigma_l,
+			double radius_pedestrian_remove, double sigma_radius, double t_seconds, double radius_ttl_limit,
+			double direction_look_back_seconds, int direction_look_back_steps, double ex_b)
+			throws ParserConfigurationException, SAXException, IOException {
+		// function to be called, return a list of tracks
+		int fps = -1;
+		// read in configure/configure.xml
+		File fXmlFile = new File("configure/configure.xml");
+		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+		Document doc = dBuilder.parse(fXmlFile);
+		doc.getDocumentElement().normalize();
+		NodeList nList = doc.getElementsByTagName("conf");
+		for (int i = 0; i < nList.getLength(); i++) {
+			Node node = nList.item(i);
+			if (node.getNodeType() == Node.ELEMENT_NODE) {
+				Element eElement = (Element) node;
+				fps = Integer.parseInt(eElement.getElementsByTagName("fps_int").item(0).getTextContent());
+			}
+		}
+
 		LinkedHashMap<Integer, ArrayList<detection>> data = util_tracker.load_mot(input);
-		LinkedHashMap<Integer, track> tracks = track_radius(data, sigma_l, radius_pedestrian_remove, sigma_radius, t_seconds, fps, 125.0, 0.5, 10, 1.0, 
+		LinkedHashMap<Integer, track> tracks = track_radius(data, sigma_l, radius_pedestrian_remove, sigma_radius,
+				t_seconds, fps, radius_ttl_limit, direction_look_back_seconds, direction_look_back_steps, ex_b,
 				"track_" + input);
 		return tracks;
 	}
-	
-	public static LinkedHashMap<Integer, track> track_radius(String input, int fps) throws IOException, ParserConfigurationException, SAXException { // function to be called, return a list of tracks
+
+	public static LinkedHashMap<Integer, track> track_radius(String input, double sigma_l,
+			double radius_pedestrian_remove, double sigma_radius, double t_seconds, int fps)
+			throws IOException, ParserConfigurationException, SAXException {
+		// function to be called, return a list of tracks
 		LinkedHashMap<Integer, ArrayList<detection>> data = util_tracker.load_mot(input);
-		LinkedHashMap<Integer, track> tracks = track_radius(data, 0.3, 10.0, 10.0, 1.0, fps, 125.0, 0.5, 10, 1.0, 
+		LinkedHashMap<Integer, track> tracks = track_radius(data, sigma_l, radius_pedestrian_remove, sigma_radius,
+				t_seconds, fps, 125.0, 0.5, 10, 1.0, "track_" + input);
+		return tracks;
+	}
+
+	public static LinkedHashMap<Integer, track> track_radius(String input, int fps)
+			throws IOException, ParserConfigurationException, SAXException {
+		// function to be called, return a list of tracks
+		LinkedHashMap<Integer, ArrayList<detection>> data = util_tracker.load_mot(input);
+		LinkedHashMap<Integer, track> tracks = track_radius(data, 0.3, 10.0, 10.0, 1.0, fps, 125.0, 0.5, 10, 1.0,
 				"track_" + input);
 		return tracks;
 	}
-	
-	public static LinkedHashMap<Integer, track> track_radius(String input) throws IOException, ParserConfigurationException, SAXException { // function to be called, return a list of tracks
+
+	public static LinkedHashMap<Integer, track> track_radius(String input)
+			throws IOException, ParserConfigurationException, SAXException {
+		// function to be called, return a list of tracks
 		LinkedHashMap<Integer, ArrayList<detection>> data = util_tracker.load_mot(input);
-		LinkedHashMap<Integer, track> tracks = track_radius(data, 0.3, 10.0, 10.0, 1.0, 60, 125.0, 0.5, 10, 1.0, 
+		LinkedHashMap<Integer, track> tracks = track_radius(data, 0.3, 10.0, 10.0, 1.0, 60, 125.0, 0.5, 10, 1.0,
 				"track_" + input);
 		return tracks;
 	}

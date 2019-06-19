@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <conf>
+	<fps_int>60</fps_int>
+	<fps_double>59.84</fps_double>
 	<tracker>
 		<iou_tracker>
 			<vehicle_type>
@@ -130,24 +132,26 @@
 	<detector>
 		<area_of_interest>
 			<npoints_area_of_interest>4</npoints_area_of_interest>
-				<points>
-					 <point>
-					 	<x>1350</x>
-					 	<y>370</y>
-					 </point>
-					 <point>
-					 	<x>1520</x>
-					 	<y>485</y>
-					 </point>
-					 <point>
-					 	<x>1420</x>
-					 	<y>585</y>
-					 </point>
-					 <point>
-					 	<x>1100</x>
-					 	<y>487</y>
-					 </point>
-				</points>
-			</area_of_interest>
+			<points>
+				 <point>
+				 	<x>1350</x>
+				 	<y>370</y>
+				 </point>
+				 <point>
+				 	<x>1520</x>
+				 	<y>485</y>
+				 </point>
+				 <point>
+				 	<x>1420</x>
+				 	<y>585</y>
+				 </point>
+				 <point>
+				 	<x>1100</x>
+				 	<y>487</y>
+				 </point>
+			</points>
+		</area_of_interest>
+		<seconds_in_aoi_pedestrian>20</seconds_in_aoi_pedestrian>
+		<seconds_in_aoi_vehicle>6</seconds_in_aoi_vehicle>
 	</detector>
 </conf>
