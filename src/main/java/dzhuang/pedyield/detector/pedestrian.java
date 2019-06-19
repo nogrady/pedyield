@@ -2,6 +2,11 @@ package dzhuang.pedyield.detector;
 
 import java.awt.Polygon;
 import java.awt.geom.Point2D;
+import java.io.IOException;
+
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.xml.sax.SAXException;
 
 import dzhuang.pedyield.tracker.detection;
 import dzhuang.pedyield.tracker.track;
@@ -16,7 +21,7 @@ public class pedestrian extends track {
 	public int theLastFrame_in_aoi;
 	public boolean valid;
 
-	public pedestrian(track t) {
+	public pedestrian(track t) throws ParserConfigurationException, SAXException, IOException {
 		super(t);
 		this.valid = false;
 		if (!t.trajs.isEmpty()) {

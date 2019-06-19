@@ -1,9 +1,12 @@
 package dzhuang.pedyield.tracker;
 
 public class detection {
+	// detected objects in the current frame
 	public int frame;
 	public double time;
+	// type of objects
 	public String type;
+	// confidence score
 	public double prob;
 
 	public Bbox bbox;

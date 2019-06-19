@@ -2,7 +2,7 @@ package dzhuang.pedyield.tracker;
 
 import java.awt.Polygon;
 import java.awt.geom.Point2D;
-import java.io.FileNotFoundException;
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -12,25 +12,31 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public class iou_tracker {
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
+
+public class iou_tracker { // for vehicle tracking
 
 	public static String[] vehicle_type = { "bus", "car", "truck" };
-	public static String[] pedestrian_type = { "person" };
 
-	public static double iou_vehicle = 0.75;
-	public static double iou_pedestrian = 0.85;
-
-	public static void main(String[] args) throws IOException {
-		for (int i = 1; i <= 10; i++) {
+	public static void main(String[] args) throws SAXException, IOException, ParserConfigurationException {
+		/*for (int i = 1; i <= 10; i++) {
 			System.out.println("File - " + i);
 			if (i < 10)
-				track_iou("GH0" + i + "0228_2_1920-1080-59_0.5_0.3_car.csv", 0.3, 0.5, 0.5, 0.5, 60);
+				track_iou("GH0" + i + "0228_2_1920-1080-59_0.5_0.3_car.csv", 0.3, 0.75, 0.5, 0.5, 60);
 			else
-				track_iou("GH" + i + "0228_2_1920-1080-59_0.5_0.3_car.csv", 0.3, 0.5, 0.5, 0.5, 60);
-		}
+				track_iou("GH" + i + "0228_2_1920-1080-59_0.5_0.3_car.csv", 0.3, 0.75, 0.5, 0.5, 60);
+		}*/
 	}
 
-	public static Bbox predictBbox(int frame_diff, track track_cur) {
+	public static Bbox predictBbox(int frame_diff, track track_cur) { // to predict the next frame bounding box position
 		int total_frame = track_cur.trajs.size();
 
 		if (frame_diff == 0) {
@@ -181,10 +187,11 @@ public class iou_tracker {
 	}
 
 	public static LinkedHashMap<Integer, track> track_iou(LinkedHashMap<Integer, ArrayList<detection>> data,
-			double sigma_l, double sigma_h, double sigma_iou, double t_seconds, int fps, String output)
-			throws FileNotFoundException {
+			double sigma_l, double iou_vehicle_remove, double sigma_iou, double t_seconds, int fps, String output)
+			throws SAXException, IOException, ParserConfigurationException {
 		int TTL = (int) (t_seconds * fps);
 		/************************************************************/
+/*		
 		int npoints_vehicle_init = 5;
 		int[] xpoints_vehicle_init = new int[npoints_vehicle_init];
 		int[] ypoints_vehicle_init = new int[npoints_vehicle_init];
@@ -214,25 +221,82 @@ public class iou_tracker {
 		xpoints_vehicle_valid[4] = 1130;
 		ypoints_vehicle_valid[4] = 1080;
 		Polygon vehicle_valid_area = new Polygon(xpoints_vehicle_valid, ypoints_vehicle_valid, npoints_vehicle_valid);
-		/************************************************************/
-
-		int npoints_pedestrian_valid = 4;
-		int[] xpoints_pedestrian_valid = new int[npoints_pedestrian_valid];
-		int[] ypoints_pedestrian_valid = new int[npoints_pedestrian_valid];
-		xpoints_pedestrian_valid[0] = 1400;
-		ypoints_pedestrian_valid[0] = 290;
-		xpoints_pedestrian_valid[1] = 1580;
-		ypoints_pedestrian_valid[1] = 400;
-		xpoints_pedestrian_valid[2] = 1130;
-		ypoints_pedestrian_valid[2] = 1080;
-		xpoints_pedestrian_valid[3] = 700;
-		ypoints_pedestrian_valid[3] = 600;
-		Polygon pedestrian_valid_area = new Polygon(xpoints_pedestrian_valid, ypoints_pedestrian_valid,
-				npoints_pedestrian_valid);
+*/
+		//read in configure/configure.xml
+		File fXmlFile = new File("configure/configure.xml");
+		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+		Document doc = dBuilder.parse(fXmlFile);
+		doc.getDocumentElement().normalize();
+		
+		// vehicle_type
+		NodeList nList = doc.getElementsByTagName("vehicle_type");
+		for(int i=0;i<nList.getLength();i++) {
+			Node node = nList.item(i);
+			if (node.getNodeType() == Node.ELEMENT_NODE) {
+				Element eElement = (Element) node;
+				vehicle_type=new String[eElement.getElementsByTagName("vtype").getLength()];
+				for(int j=0;j<eElement.getElementsByTagName("vtype").getLength();j++) {
+					vehicle_type[j]=eElement.getElementsByTagName("vtype").item(j).getTextContent();
+				}
+			}
+		}
+		
+		// vehicle_init_area
+		int npoints_vehicle_init=-1;
+		int[] xpoints_vehicle_init=null;
+		int[] ypoints_vehicle_init=null;
+		nList = doc.getElementsByTagName("vehicle_init_area");
+		for(int i=0;i<nList.getLength();i++) {
+			Node node = nList.item(i);
+			if (node.getNodeType() == Node.ELEMENT_NODE) {
+				Element eElement = (Element) node;
+				
+				npoints_vehicle_init = Integer.parseInt(eElement.getElementsByTagName("npoints_vehicle_init").item(0).getTextContent());
+				xpoints_vehicle_init = new int[npoints_vehicle_init];
+				ypoints_vehicle_init = new int[npoints_vehicle_init];
+				
+				for(int j=0;j<eElement.getElementsByTagName("point").getLength();j++) {
+					Node node_point = eElement.getElementsByTagName("point").item(j);
+					if (node_point.getNodeType() == Node.ELEMENT_NODE) {
+						Element eElement_point = (Element) node_point;
+						xpoints_vehicle_init[j]=Integer.parseInt(eElement_point.getElementsByTagName("x").item(0).getTextContent());
+						ypoints_vehicle_init[j]=Integer.parseInt(eElement_point.getElementsByTagName("y").item(0).getTextContent());
+					}
+				}
+			}
+		}
+		
+		// vehicle_valid_area
+		int npoints_vehicle_valid=-1;
+		int[] xpoints_vehicle_valid=null;
+		int[] ypoints_vehicle_valid=null;
+		nList = doc.getElementsByTagName("vehicle_valid_area");
+		for(int i=0;i<nList.getLength();i++) {
+			Node node = nList.item(i);
+			if (node.getNodeType() == Node.ELEMENT_NODE) {
+				Element eElement = (Element) node;
+				
+				npoints_vehicle_valid=Integer.parseInt(eElement.getElementsByTagName("npoints_vehicle_valid").item(0).getTextContent());
+				xpoints_vehicle_valid = new int[npoints_vehicle_valid];
+				ypoints_vehicle_valid = new int[npoints_vehicle_valid];
+				
+				for(int j=0;j<eElement.getElementsByTagName("point").getLength();j++) {
+					Node node_point = eElement.getElementsByTagName("point").item(j);
+					if (node_point.getNodeType() == Node.ELEMENT_NODE) {
+						Element eElement_point = (Element) node_point;
+						xpoints_vehicle_valid[j]=Integer.parseInt(eElement_point.getElementsByTagName("x").item(0).getTextContent());
+						ypoints_vehicle_valid[j]=Integer.parseInt(eElement_point.getElementsByTagName("y").item(0).getTextContent());
+					}
+				}
+			}
+		}
+		
+		Polygon vehicle_init_area = new Polygon(xpoints_vehicle_init, ypoints_vehicle_init, npoints_vehicle_init);
+		Polygon vehicle_valid_area = new Polygon(xpoints_vehicle_valid, ypoints_vehicle_valid, npoints_vehicle_valid);
 		/************************************************************/
 
 		HashSet<String> objs_vehicle_type = new HashSet<String>(Arrays.asList(vehicle_type));
-		HashSet<String> objs_pedestrian_type = new HashSet<String>(Arrays.asList(pedestrian_type));
 
 		LinkedHashMap<Integer, track> tracks_active = new LinkedHashMap<Integer, track>();
 		LinkedHashMap<Integer, track> tracks_finished = new LinkedHashMap<Integer, track>();
@@ -247,11 +311,6 @@ public class iou_tracker {
 					if (objs_vehicle_type.contains(i.type)) {
 						Point2D pt_left_bottom = new Point2D.Double(i.bbox.left, i.bbox.bottom);
 						if (vehicle_valid_area.contains(pt_left_bottom)) {
-							dets_temporary.add(i);
-						}
-					} else if (objs_pedestrian_type.contains(i.type)) {
-						Point2D pt_x_y = new Point2D.Double(i.position.x, i.position.y);
-						if (pedestrian_valid_area.contains(pt_x_y)) {
 							dets_temporary.add(i);
 						}
 					}
@@ -271,16 +330,8 @@ public class iou_tracker {
 
 						double iou_help = util_tracker.iou(b1, b2);
 
-						if (iou_help >= iou_vehicle && objs_vehicle_type.contains(dets_temporary.get(i).type)
+						if (iou_help >= iou_vehicle_remove && objs_vehicle_type.contains(dets_temporary.get(i).type)
 								&& objs_vehicle_type.contains(dets_temporary.get(j).type)) {
-							flag = true;
-							if (prob1 > prob2)
-								dets_removed_index.add(j);
-							else
-								dets_removed_index.add(i);
-						} else if (iou_help >= iou_pedestrian
-								&& objs_pedestrian_type.contains(dets_temporary.get(i).type)
-								&& objs_pedestrian_type.contains(dets_temporary.get(j).type)) {
 							flag = true;
 							if (prob1 > prob2)
 								dets_removed_index.add(j);
@@ -349,16 +400,7 @@ public class iou_tracker {
 						tracks_active.put(new_track.Id, new_track);
 						cnt++;
 					}
-				} else if (objs_pedestrian_type.contains(k.type)) {
-					Point2D pt_x_y = new Point2D.Double(k.position.x, k.position.y);
-//					if(pedestrian_init_top_area.contains(pt_x_y) || pedestrian_init_bottom_area.contains(pt_x_y)) {
-					track new_track = new track(cnt);
-					new_track.trajs.add(k);
-					tracks_active.put(new_track.Id, new_track);
-					cnt++;
-//					}
 				}
-
 			}
 		}
 
@@ -369,7 +411,6 @@ public class iou_tracker {
 		PrintWriter pw = new PrintWriter(output);
 
 		for (Map.Entry<Integer, track> entry : tracks_finished.entrySet()) {
-			int key = entry.getKey();
 			track tr = entry.getValue();
 			for (detection d : tr.trajs) {
 				pw.println(d.frame + "," + tr.Id + "," + d.position.x + "," + d.position.y + "," + d.position.w + ","
@@ -380,10 +421,36 @@ public class iou_tracker {
 		return tracks_finished;
 	}
 
-	public static LinkedHashMap<Integer, track> track_iou(String input, double sigma_l, double sigma_h,
-			double sigma_iou, double t_seconds, int fps) throws IOException {
+	/**
+	 * @param input: input directory
+	 * @param sigma_l: lowest probability of the object detection results be be considered, [0.3, 0.5]
+	 * @param iou_vehicle_remove: threshold of vehicle's intersection of union in the same frame to remove the duplicates
+	 * @param sigma_radius: the distance threshold for each pedestrian object, [5.0, 20.0]
+	 * @param t_seconds: the ttl seconds to handle the missing detections, [0.5, 1.5]
+	 * @param fps: the fps of the video
+	 * @throws IOException 
+	 * @throws ParserConfigurationException 
+	 * @throws SAXException 
+	 * 
+	 * */
+	public static LinkedHashMap<Integer, track> track_iou(String input, double sigma_l, double iou_vehicle_remove, 
+			double sigma_iou, double t_seconds, int fps) throws IOException, SAXException, ParserConfigurationException { // function to be called, return a list of tracks
 		LinkedHashMap<Integer, ArrayList<detection>> data = util_tracker.load_mot(input);
-		LinkedHashMap<Integer, track> tracks = track_iou(data, sigma_l, sigma_h, sigma_iou, t_seconds, fps,
+		LinkedHashMap<Integer, track> tracks = track_iou(data, sigma_l, iou_vehicle_remove, sigma_iou, t_seconds, fps,
+				"track_" + input);
+		return tracks;
+	}
+	
+	public static LinkedHashMap<Integer, track> track_iou(String input, int fps) throws IOException, SAXException, ParserConfigurationException { // function to be called, return a list of tracks
+		LinkedHashMap<Integer, ArrayList<detection>> data = util_tracker.load_mot(input);
+		LinkedHashMap<Integer, track> tracks = track_iou(data, 0.3, 0.75, 0.5, 0.5, fps,
+				"track_" + input);
+		return tracks;
+	}
+	
+	public static LinkedHashMap<Integer, track> track_iou(String input) throws IOException, SAXException, ParserConfigurationException { // function to be called, return a list of tracks
+		LinkedHashMap<Integer, ArrayList<detection>> data = util_tracker.load_mot(input);
+		LinkedHashMap<Integer, track> tracks = track_iou(data, 0.3, 0.75, 0.5, 0.5, 60,
 				"track_" + input);
 		return tracks;
 	}

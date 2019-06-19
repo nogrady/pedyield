@@ -9,6 +9,7 @@ import java.util.LinkedHashMap;
 public class util_tracker {
 
 	public static double iou(Bbox bbox1, Bbox bbox2) {
+		// the intersection of union between two bounding boxes
 		int x0_1 = bbox1.left;
 		int y0_1 = bbox1.top;
 		int x1_1 = bbox1.right;
@@ -40,6 +41,8 @@ public class util_tracker {
 	}
 
 	public static LinkedHashMap<Integer, ArrayList<detection>> load_mot(String input) throws IOException {
+		// load the object detection results
+		
 		LinkedHashMap<Integer, ArrayList<detection>> data = new LinkedHashMap<Integer, ArrayList<detection>>();
 
 		BufferedReader br = new BufferedReader(new FileReader(input));
@@ -93,6 +96,8 @@ public class util_tracker {
 	}
 
 	public static double radius(Position position1, Position position2) {
+		// the distance between two objects
+		
 		double x1 = position1.x;
 		double y1 = position1.y;
 		double x2 = position2.x;

@@ -2,7 +2,7 @@ package dzhuang.pedyield.tracker;
 
 import java.awt.Polygon;
 import java.awt.geom.Point2D;
-import java.io.FileNotFoundException;
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -12,28 +12,30 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public class radius_tracker {
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
+
+public class radius_tracker { // for pedestrian tracking
 	public static String[] pedestrian_type = { "person" };
-	public static double radius_pedestrian = 10.0;
-	public static double radius_ttl_limit = 125.0;
-	public static double direction_look_back_seconds = 0.5; // default
-	public static int direction_look_back_steps = 10; // default
-
-	public static double ex_b = 1.0;
-
-	public static void main(String[] args) throws IOException {
-		track_radius("GH010228_2_1920-1080-59_0.5_0.3_ped.csv", 0.3, 0.5, 10.0, 1.0, 60);
-
-		for (int i = 1; i <= 10; i++) {
+	
+	public static void main(String[] args) throws IOException, SAXException, ParserConfigurationException {
+		/*for (int i = 1; i <= 10; i++) {
 			System.out.println("File - " + i);
 			if (i < 10)
-				track_radius("GH0" + i + "0228_2_1920-1080-59_0.5_0.3_ped.csv", 0.3, 0.5, 10.0, 1.0, 60);
+				track_radius("GH0" + i + "0228_2_1920-1080-59_0.5_0.3_ped.csv", 0.3, 10.0, 10.0, 1.0, 60, 125.0, 0.5, 10, 1.0);
 			else
-				track_radius("GH" + i + "0228_2_1920-1080-59_0.5_0.3_ped.csv", 0.3, 0.5, 10.0, 1.0, 60);
-		}
+				track_radius("GH" + i + "0228_2_1920-1080-59_0.5_0.3_ped.csv", 0.3, 10.0, 10.0, 1.0, 60, 125.0, 0.5, 10, 1.0);
+		}*/
 	}
 
-	public static double[] predict_radius_direction(int frame_diff, track track_cur, int watch_back) {
+	public static double[] predict_radius_direction(int frame_diff, track track_cur, int watch_back, double ex_b) { // get the possible next direction for each pedestrian object
 		// 0:x_1-x_0>0, y_1-y_0>0
 		// 1:x_1-x_0>0, y_1-y_0=0
 		// 2:x_1-x_0>0, y_1-y_0<0
@@ -43,7 +45,7 @@ public class radius_tracker {
 		// 6:x_1-x_0<0, y_1-y_0>0
 		// 7:x_1-x_0<0, y_1-y_0=0
 		// 8:x_1-x_0<0, y_1-y_0<0
-		double attenuation_rate = 0.9;
+		double attenuation_rate = 0.9; // between 0.8-1.0, do not need to change much
 		double[] direction_prob = new double[9];
 		for (int i = 0; i < direction_prob.length; i++) {
 			direction_prob[i] = 0.0;
@@ -51,6 +53,7 @@ public class radius_tracker {
 
 		int total_frame = track_cur.trajs.size();
 
+		// check the number of "watch_back" frames of the historical directions
 		if (total_frame - 1 < watch_back) {
 			int cnt = 0;
 			for (int i = total_frame - 1; i >= 1; i--) {
@@ -118,16 +121,16 @@ public class radius_tracker {
 			}
 
 			for (int i = 0; i < direction_prob.length; i++) {
-				direction_prob[i] = direction_prob[i] / (cnt + 1);
+				direction_prob[i] = direction_prob[i] / (cnt + 1); // the probability of each direction of the next move
 			}
 		}
 
-		return softmax(direction_prob, frame_diff * attenuation_rate + 1);
+		return softmax(direction_prob, frame_diff * attenuation_rate + 1, ex_b); // use softmax to normalize the probabilities
 	}
 
-	public static double predict_radius_threshold(int frame_diff, track track_cur, double sigma_radius) {
+	public static double predict_radius_threshold(int frame_diff, track track_cur, double sigma_radius) { // get the distance threshold for each pedestrian object
 		int total_frame = track_cur.trajs.size();
-		double attenuation_rate = 0.9;
+		double attenuation_rate = 0.9; // between 0.8-1.0, do not need to change much
 
 		if (frame_diff == 0) {
 			if (total_frame == 1) {
@@ -137,14 +140,14 @@ public class radius_tracker {
 						track_cur.trajs.get(track_cur.trajs.size() - 2).position);
 				int tim = track_cur.trajs.get(track_cur.trajs.size() - 1).frame
 						- track_cur.trajs.get(track_cur.trajs.size() - 2).frame;
-				r = r / tim;
+				r = r / tim; // moving distance of one previous frame
 
 				return r > sigma_radius ? r : sigma_radius;
 			}
 		}
 
 		if (total_frame == 1) {
-			return sigma_radius * frame_diff * attenuation_rate;
+			return sigma_radius * frame_diff * attenuation_rate; // no previous experience
 		} else {
 			double avg_dis_move = 0.0;
 			if (frame_diff >= total_frame - 1) {
@@ -166,13 +169,13 @@ public class radius_tracker {
 				}
 				avg_dis_move = avg_dis_move / (frame_diff);
 			}
-			double move_one_frame = avg_dis_move > sigma_radius ? avg_dis_move : sigma_radius;
+			double move_one_frame = avg_dis_move > sigma_radius ? avg_dis_move : sigma_radius; // moving distance of one frame by average
 
 			return move_one_frame * frame_diff * attenuation_rate;
 		}
 	}
 
-	public static double[] softmax(double[] z, double b) {
+	public static double[] softmax(double[] z, double b, double ex_b) { // softmax distance function
 		double sum = 0;
 		for (int i = 0; i < z.length; i++) {
 			sum += Math.exp(ex_b * b * z[i]);
@@ -187,13 +190,13 @@ public class radius_tracker {
 	}
 
 	public static LinkedHashMap<Integer, track> track_radius(LinkedHashMap<Integer, ArrayList<detection>> data,
-			double sigma_l, double sigma_h, double sigma_radius, double t_seconds, int fps, String output)
-			throws FileNotFoundException {
+			double sigma_l, double radius_pedestrian_remove, double sigma_radius, double t_seconds, int fps, double radius_ttl_limit, double direction_look_back_seconds, int direction_look_back_steps, double ex_b, String output)
+			throws ParserConfigurationException, SAXException, IOException { // tracking algorithm
 		int TTL = (int) (t_seconds * fps);
 		direction_look_back_steps = (int) (direction_look_back_seconds * fps);
 
 		/************************************************************/
-		// TODO
+/*
 		int npoints_pedestrian_valid = 4;
 		int[] xpoints_pedestrian_valid = new int[npoints_pedestrian_valid];
 		int[] ypoints_pedestrian_valid = new int[npoints_pedestrian_valid];
@@ -235,6 +238,109 @@ public class radius_tracker {
 		ypoints_pedestrian_init_bottom[3] = 600;
 		Polygon pedestrian_init_bottom_area = new Polygon(xpoints_pedestrian_init_bottom,
 				ypoints_pedestrian_init_bottom, npoints_pedestrian_init_bottom);
+*/
+		
+		//read in configure/configure.xml
+		File fXmlFile = new File("configure/configure.xml");
+		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+		Document doc = dBuilder.parse(fXmlFile);
+		doc.getDocumentElement().normalize();
+				
+		// pedestrian_type
+		NodeList nList = doc.getElementsByTagName("pedestrian_type");
+		for(int i=0;i<nList.getLength();i++) {
+			Node node = nList.item(i);
+			if (node.getNodeType() == Node.ELEMENT_NODE) {
+				Element eElement = (Element) node;
+				pedestrian_type=new String[eElement.getElementsByTagName("ptype").getLength()];
+				for(int j=0;j<eElement.getElementsByTagName("ptype").getLength();j++) {
+					pedestrian_type[j]=eElement.getElementsByTagName("ptype").item(j).getTextContent();
+				}
+			}
+		}
+						
+		// pedestrian_init_top_area
+		int npoints_pedestrian_init_top=-1;
+		int[] xpoints_pedestrian_init_top=null;
+		int[] ypoints_pedestrian_init_top=null;
+		nList = doc.getElementsByTagName("pedestrian_init_top_area");
+		for(int i=0;i<nList.getLength();i++) {
+			Node node = nList.item(i);
+			if (node.getNodeType() == Node.ELEMENT_NODE) {
+				Element eElement = (Element) node;
+						
+				npoints_pedestrian_init_top = Integer.parseInt(eElement.getElementsByTagName("npoints_pedestrian_init_top").item(0).getTextContent());
+				xpoints_pedestrian_init_top = new int[npoints_pedestrian_init_top];
+				ypoints_pedestrian_init_top = new int[npoints_pedestrian_init_top];
+				
+				for(int j=0;j<eElement.getElementsByTagName("point").getLength();j++) {
+					Node node_point = eElement.getElementsByTagName("point").item(j);
+					if (node_point.getNodeType() == Node.ELEMENT_NODE) {
+						Element eElement_point = (Element) node_point;
+						xpoints_pedestrian_init_top[j]=Integer.parseInt(eElement_point.getElementsByTagName("x").item(0).getTextContent());
+						ypoints_pedestrian_init_top[j]=Integer.parseInt(eElement_point.getElementsByTagName("y").item(0).getTextContent());
+					}
+				}
+			}
+		}
+			
+		// pedestrian_init_bottom_area
+		int npoints_pedestrian_init_bottom=-1;
+		int[] xpoints_pedestrian_init_bottom=null;
+		int[] ypoints_pedestrian_init_bottom=null;
+		nList = doc.getElementsByTagName("pedestrian_init_bottom_area");
+		for(int i=0;i<nList.getLength();i++) {
+			Node node = nList.item(i);
+			if (node.getNodeType() == Node.ELEMENT_NODE) {
+				Element eElement = (Element) node;
+						
+				npoints_pedestrian_init_bottom = Integer.parseInt(eElement.getElementsByTagName("npoints_pedestrian_init_bottom").item(0).getTextContent());
+				xpoints_pedestrian_init_bottom = new int[npoints_pedestrian_init_bottom];
+				ypoints_pedestrian_init_bottom = new int[npoints_pedestrian_init_bottom];
+				
+				for(int j=0;j<eElement.getElementsByTagName("point").getLength();j++) {
+					Node node_point = eElement.getElementsByTagName("point").item(j);
+					if (node_point.getNodeType() == Node.ELEMENT_NODE) {
+						Element eElement_point = (Element) node_point;
+						xpoints_pedestrian_init_bottom[j]=Integer.parseInt(eElement_point.getElementsByTagName("x").item(0).getTextContent());
+						ypoints_pedestrian_init_bottom[j]=Integer.parseInt(eElement_point.getElementsByTagName("y").item(0).getTextContent());
+					}
+				}
+			}
+		}
+				
+		// pedestrian_valid_area
+		int npoints_pedestrian_valid=-1;
+		int[] xpoints_pedestrian_valid=null;
+		int[] ypoints_pedestrian_valid=null;
+		nList = doc.getElementsByTagName("pedestrian_valid_area");
+		for(int i=0;i<nList.getLength();i++) {
+			Node node = nList.item(i);
+			if (node.getNodeType() == Node.ELEMENT_NODE) {
+				Element eElement = (Element) node;
+				
+				npoints_pedestrian_valid=Integer.parseInt(eElement.getElementsByTagName("npoints_pedestrian_valid").item(0).getTextContent());
+				xpoints_pedestrian_valid = new int[npoints_pedestrian_valid];
+				ypoints_pedestrian_valid = new int[npoints_pedestrian_valid];
+				
+				for(int j=0;j<eElement.getElementsByTagName("point").getLength();j++) {
+					Node node_point = eElement.getElementsByTagName("point").item(j);
+					if (node_point.getNodeType() == Node.ELEMENT_NODE) {
+						Element eElement_point = (Element) node_point;
+						xpoints_pedestrian_valid[j]=Integer.parseInt(eElement_point.getElementsByTagName("x").item(0).getTextContent());
+						ypoints_pedestrian_valid[j]=Integer.parseInt(eElement_point.getElementsByTagName("y").item(0).getTextContent());
+					}
+				}
+			}
+		}
+						
+		Polygon pedestrian_valid_area = new Polygon(xpoints_pedestrian_valid, ypoints_pedestrian_valid,
+				npoints_pedestrian_valid);
+		Polygon pedestrian_init_top_area = new Polygon(xpoints_pedestrian_init_top, ypoints_pedestrian_init_top,
+				npoints_pedestrian_init_top);
+		Polygon pedestrian_init_bottom_area = new Polygon(xpoints_pedestrian_init_bottom,
+				ypoints_pedestrian_init_bottom, npoints_pedestrian_init_bottom);		
 		/************************************************************/
 		HashSet<String> objs_pedestrian_type = new HashSet<String>(Arrays.asList(pedestrian_type));
 
@@ -273,7 +379,7 @@ public class radius_tracker {
 
 						double radius_help = util_tracker.radius(p1, p2);
 
-						if (radius_help <= radius_pedestrian
+						if (radius_help <= radius_pedestrian_remove
 								&& objs_pedestrian_type.contains(dets_temporary.get(i).type)
 								&& objs_pedestrian_type.contains(dets_temporary.get(j).type)) {
 							flag = true;
@@ -308,14 +414,11 @@ public class radius_tracker {
 
 				int frame_diff = frame_num - tracks_active.get(i).trajs.get(tracks_active.get(i).trajs.size() - 1).frame
 						- 1;
-				double[] direction_probs = predict_radius_direction(frame_diff, tracks_active.get(i), watch_back);
+				double[] direction_probs = predict_radius_direction(frame_diff, tracks_active.get(i), watch_back, ex_b);
 
 				if (frame_diff <= TTL) {
 					if (dets.size() > 0) {
 						double min_radius = Double.MAX_VALUE;
-						// TODO
-						double min_radius_nod = Double.MAX_VALUE;
-						int min_radius_det_index_nod = -1;
 						int min_radius_det_index = -1;
 
 						for (int j = 0; j < dets.size(); j++) {
@@ -363,11 +466,6 @@ public class radius_tracker {
 										min_radius = radius_and_dir;
 										min_radius_det_index = j;
 									}
-
-									if (radius < min_radius_nod) {
-										min_radius_nod = radius;
-										min_radius_det_index_nod = j;
-									}
 								}
 							} else {
 								double radius_and_dir = radius * (1 - direction_probs[dir]);
@@ -375,21 +473,14 @@ public class radius_tracker {
 									min_radius = radius_and_dir;
 									min_radius_det_index = j;
 								}
-
-								if (radius < min_radius_nod) {
-									min_radius_nod = radius;
-									min_radius_det_index_nod = j;
-								}
 							}
 						}
 
-						// TODO
 						double radius_threshold = predict_radius_threshold(frame_diff, tracks_active.get(i),
 								sigma_radius);
 
 						radius_threshold = radius_ttl_limit < radius_threshold ? radius_ttl_limit : radius_threshold;
 
-//						System.out.println(min_radius+"\t"+min_radius_nod+"\t"+radius_threshold+"\t"+frame_diff+"\t"+min_radius_det_index+"\t"+min_radius_det_index_nod);
 						if (min_radius <= radius_threshold) {
 							tracks_active.get(i).trajs.add(dets.get(min_radius_det_index));
 							Point2D pt_x_y = new Point2D.Double(dets.get(min_radius_det_index).position.x,
@@ -478,10 +569,10 @@ public class radius_tracker {
 			tracks_finished.put(t, tracks_active.get(t));
 		}
 
+		// output the tracking results
 		PrintWriter pw = new PrintWriter(output);
 
 		for (Map.Entry<Integer, track> entry : tracks_finished.entrySet()) {
-			int key = entry.getKey();
 			track tr = entry.getValue();
 			for (detection d : tr.trajs) {
 				pw.println(d.frame + "," + tr.Id + "," + d.position.x + "," + d.position.y + "," + d.position.w + ","
@@ -492,10 +583,48 @@ public class radius_tracker {
 		return tracks_finished;
 	}
 
-	public static LinkedHashMap<Integer, track> track_radius(String input, double sigma_l, double sigma_h,
-			double sigma_radius, double t_seconds, int fps) throws IOException {
+	/**
+	 * @param input: input directory
+	 * @param sigma_l: lowest probability of the object detection results be be considered, [0.3, 0.5]
+	 * @param radius_pedestrian_remove: threshold of pedestrian moving distance in the same frame to remove the duplicates [10.0]
+	 * @param sigma_radius: the distance threshold for each pedestrian object, [5.0, 20.0]
+	 * @param t_seconds: the ttl seconds to handle the missing detections, [0.5, 1.5]
+	 * @param fps: the fps of the video
+	 * @param radius_ttl_limit: max distance of pedestrian moving during missing detections [125.0]
+	 * @param direction_look_back_seconds: seconds to look back to learn the next possible direction [0.5]
+	 * @param direction_look_back_steps: frames to look back to learn the next possible direction [10]
+	 * @param ex_b: the control the softmax normalization [1.0]
+	 * @throws IOException 
+	 * @throws SAXException 
+	 * @throws ParserConfigurationException 
+	 * 
+	 * */
+	public static LinkedHashMap<Integer, track> track_radius(String input, double sigma_l, double radius_pedestrian_remove, 
+			double sigma_radius, double t_seconds, int fps, double radius_ttl_limit, double direction_look_back_seconds, int direction_look_back_steps, double ex_b) throws ParserConfigurationException, SAXException, IOException { // function to be called, return a list of tracks
 		LinkedHashMap<Integer, ArrayList<detection>> data = util_tracker.load_mot(input);
-		LinkedHashMap<Integer, track> tracks = track_radius(data, sigma_l, sigma_h, sigma_radius, t_seconds, fps,
+		LinkedHashMap<Integer, track> tracks = track_radius(data, sigma_l, radius_pedestrian_remove, sigma_radius, t_seconds, fps, radius_ttl_limit, direction_look_back_seconds, direction_look_back_steps, ex_b, 
+				"track_" + input);
+		return tracks;
+	}
+	
+	public static LinkedHashMap<Integer, track> track_radius(String input, double sigma_l, double radius_pedestrian_remove, 
+			double sigma_radius, double t_seconds, int fps) throws IOException, ParserConfigurationException, SAXException { // function to be called, return a list of tracks
+		LinkedHashMap<Integer, ArrayList<detection>> data = util_tracker.load_mot(input);
+		LinkedHashMap<Integer, track> tracks = track_radius(data, sigma_l, radius_pedestrian_remove, sigma_radius, t_seconds, fps, 125.0, 0.5, 10, 1.0, 
+				"track_" + input);
+		return tracks;
+	}
+	
+	public static LinkedHashMap<Integer, track> track_radius(String input, int fps) throws IOException, ParserConfigurationException, SAXException { // function to be called, return a list of tracks
+		LinkedHashMap<Integer, ArrayList<detection>> data = util_tracker.load_mot(input);
+		LinkedHashMap<Integer, track> tracks = track_radius(data, 0.3, 10.0, 10.0, 1.0, fps, 125.0, 0.5, 10, 1.0, 
+				"track_" + input);
+		return tracks;
+	}
+	
+	public static LinkedHashMap<Integer, track> track_radius(String input) throws IOException, ParserConfigurationException, SAXException { // function to be called, return a list of tracks
+		LinkedHashMap<Integer, ArrayList<detection>> data = util_tracker.load_mot(input);
+		LinkedHashMap<Integer, track> tracks = track_radius(data, 0.3, 10.0, 10.0, 1.0, 60, 125.0, 0.5, 10, 1.0, 
 				"track_" + input);
 		return tracks;
 	}

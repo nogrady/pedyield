@@ -1,6 +1,8 @@
 package dzhuang.pedyield.tracker;
 
+
 public class Bbox {
+	// bounding box
 	public int bottom;
 	public int left;
 	public int top;

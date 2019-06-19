@@ -1,6 +1,11 @@
 package dzhuang.pedyield.detector;
 
 import java.awt.Polygon;
+import java.io.IOException;
+
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.xml.sax.SAXException;
 
 import dzhuang.pedyield.tracker.detection;
 import dzhuang.pedyield.tracker.track;
@@ -15,7 +20,7 @@ public class vehicle extends track {
 	public int theLastFrame_in_aoi;
 	public boolean valid;
 
-	public vehicle(track t) {
+	public vehicle(track t) throws ParserConfigurationException, SAXException, IOException {
 		super(t);
 		this.valid = false;
 		if (!t.trajs.isEmpty()) {

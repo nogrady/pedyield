@@ -4,6 +4,10 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.xml.sax.SAXException;
+
 public class pedyield_detector {
 	public static ArrayList<pedestrian> pedestrian_list;
 	public static ArrayList<vehicle> vehicle_list;
@@ -17,7 +21,7 @@ public class pedyield_detector {
 	public static int v_dangerous2out = (int) (fps * (0.05)); // v_dangerous2out << p_dangerous2out
 	public static int p_walk_through = (int) (fps * (1.0));
 
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException, SAXException, ParserConfigurationException {
 		for (int i = 1; i <= 1; i++) {
 			System.out.println("File - " + i);
 			if (i < 10)
@@ -29,7 +33,7 @@ public class pedyield_detector {
 		}
 	}
 
-	public static void pedyield_detector_run(String pedInput, String vehInput) throws IOException {
+	public static void pedyield_detector_run(String pedInput, String vehInput) throws IOException, SAXException, ParserConfigurationException {
 		pedestrian_list = new ArrayList<pedestrian>(util_detector.load_pedestrian_list(pedInput));
 		vehicle_list = new ArrayList<vehicle>(util_detector.load_vehicle_list(vehInput));
 		/*************************************************************************************/

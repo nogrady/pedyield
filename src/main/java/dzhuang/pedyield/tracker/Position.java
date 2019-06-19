@@ -1,8 +1,9 @@
 package dzhuang.pedyield.tracker;
 
 public class Position {
-	public double x;
-	public double y;
+	// objects position
+	public double x; // x of the middle point
+	public double y; // y of the middle point
 	public double w;
 	public double h;
 
