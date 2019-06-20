@@ -407,10 +407,15 @@ public class iou_tracker {
 	public static LinkedHashMap<Integer, track> track_iou(String input, double sigma_l, double iou_vehicle_remove,
 			double sigma_iou, double t_seconds, int fps)
 			throws IOException, SAXException, ParserConfigurationException { // function to be called, return a list of
-																				// tracks
+		File input_f=new File(input);
+		String dir=input_f.getParent();
+		String fi=input_f.getName();
+		String output="track_"+fi;
+		if(dir!=null && !dir.isEmpty())
+			output=dir+"/"+"track_"+fi;															// tracks
 		LinkedHashMap<Integer, ArrayList<detection>> data = util_tracker.load_mot(input);
 		LinkedHashMap<Integer, track> tracks = track_iou(data, sigma_l, iou_vehicle_remove, sigma_iou, t_seconds, fps,
-				"track_" + input);
+				output);
 		return tracks;
 	}
 
@@ -433,25 +438,43 @@ public class iou_tracker {
 			}
 		}
 
+		File input_f=new File(input);
+		String dir=input_f.getParent();
+		String fi=input_f.getName();
+		String output="track_"+fi;
+		if(dir!=null && !dir.isEmpty())
+			output=dir+"/"+"track_"+fi;
 		LinkedHashMap<Integer, ArrayList<detection>> data = util_tracker.load_mot(input);
 		LinkedHashMap<Integer, track> tracks = track_iou(data, sigma_l, iou_vehicle_remove, sigma_iou, t_seconds, fps,
-				"track_" + input);
+				output);
 		return tracks;
 	}
 
 	public static LinkedHashMap<Integer, track> track_iou(String input, int fps)
 			throws IOException, SAXException, ParserConfigurationException {
+		File input_f=new File(input);
+		String dir=input_f.getParent();
+		String fi=input_f.getName();
+		String output="track_"+fi;
+		if(dir!=null && !dir.isEmpty())
+			output=dir+"/"+"track_"+fi;
 		// function to be called, return a list of tracks
 		LinkedHashMap<Integer, ArrayList<detection>> data = util_tracker.load_mot(input);
-		LinkedHashMap<Integer, track> tracks = track_iou(data, 0.3, 0.75, 0.5, 0.5, fps, "track_" + input);
+		LinkedHashMap<Integer, track> tracks = track_iou(data, 0.3, 0.75, 0.5, 0.5, fps, output);
 		return tracks;
 	}
 
 	public static LinkedHashMap<Integer, track> track_iou(String input)
 			throws IOException, SAXException, ParserConfigurationException {
+		File input_f=new File(input);
+		String dir=input_f.getParent();
+		String fi=input_f.getName();
+		String output="track_"+fi;
+		if(dir!=null && !dir.isEmpty())
+			output=dir+"/"+"track_"+fi;
 		// function to be called, return a list of tracks
 		LinkedHashMap<Integer, ArrayList<detection>> data = util_tracker.load_mot(input);
-		LinkedHashMap<Integer, track> tracks = track_iou(data, 0.3, 0.75, 0.5, 0.5, 60, "track_" + input);
+		LinkedHashMap<Integer, track> tracks = track_iou(data, 0.3, 0.75, 0.5, 0.5, 60, output);
 		return tracks;
 	}
 }

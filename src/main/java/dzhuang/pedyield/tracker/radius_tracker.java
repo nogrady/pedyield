@@ -572,11 +572,20 @@ public class radius_tracker { // for pedestrian tracking
 			double radius_pedestrian_remove, double sigma_radius, double t_seconds, int fps, double radius_ttl_limit,
 			double direction_look_back_seconds, int direction_look_back_steps, double ex_b)
 			throws ParserConfigurationException, SAXException, IOException {
+		
+		File input_f=new File(input);
+		String dir=input_f.getParent();
+		String fi=input_f.getName();
+		String output="track_"+fi;
+		if(dir!=null && !dir.isEmpty())
+			output=dir+"/"+"track_"+fi;
+		
+		
 		// function to be called, return a list of tracks
 		LinkedHashMap<Integer, ArrayList<detection>> data = util_tracker.load_mot(input);
 		LinkedHashMap<Integer, track> tracks = track_radius(data, sigma_l, radius_pedestrian_remove, sigma_radius,
 				t_seconds, fps, radius_ttl_limit, direction_look_back_seconds, direction_look_back_steps, ex_b,
-				"track_" + input);
+				output);
 		return tracks;
 	}
 
@@ -601,38 +610,63 @@ public class radius_tracker { // for pedestrian tracking
 			}
 		}
 
+		File input_f=new File(input);
+		String dir=input_f.getParent();
+		String fi=input_f.getName();
+		String output="track_"+fi;
+		if(dir!=null && !dir.isEmpty())
+			output=dir+"/"+"track_"+fi;
+		
 		LinkedHashMap<Integer, ArrayList<detection>> data = util_tracker.load_mot(input);
 		LinkedHashMap<Integer, track> tracks = track_radius(data, sigma_l, radius_pedestrian_remove, sigma_radius,
 				t_seconds, fps, radius_ttl_limit, direction_look_back_seconds, direction_look_back_steps, ex_b,
-				"track_" + input);
+				output);
 		return tracks;
 	}
 
 	public static LinkedHashMap<Integer, track> track_radius(String input, double sigma_l,
 			double radius_pedestrian_remove, double sigma_radius, double t_seconds, int fps)
 			throws IOException, ParserConfigurationException, SAXException {
+		File input_f=new File(input);
+		String dir=input_f.getParent();
+		String fi=input_f.getName();
+		String output="track_"+fi;
+		if(dir!=null && !dir.isEmpty())
+			output=dir+"/"+"track_"+fi;
 		// function to be called, return a list of tracks
 		LinkedHashMap<Integer, ArrayList<detection>> data = util_tracker.load_mot(input);
 		LinkedHashMap<Integer, track> tracks = track_radius(data, sigma_l, radius_pedestrian_remove, sigma_radius,
-				t_seconds, fps, 125.0, 0.5, 10, 1.0, "track_" + input);
+				t_seconds, fps, 125.0, 0.5, 10, 1.0, output);
 		return tracks;
 	}
 
 	public static LinkedHashMap<Integer, track> track_radius(String input, int fps)
 			throws IOException, ParserConfigurationException, SAXException {
+		File input_f=new File(input);
+		String dir=input_f.getParent();
+		String fi=input_f.getName();
+		String output="track_"+fi;
+		if(dir!=null && !dir.isEmpty())
+			output=dir+"/"+"track_"+fi;
 		// function to be called, return a list of tracks
 		LinkedHashMap<Integer, ArrayList<detection>> data = util_tracker.load_mot(input);
 		LinkedHashMap<Integer, track> tracks = track_radius(data, 0.3, 10.0, 10.0, 1.0, fps, 125.0, 0.5, 10, 1.0,
-				"track_" + input);
+				output);
 		return tracks;
 	}
 
 	public static LinkedHashMap<Integer, track> track_radius(String input)
 			throws IOException, ParserConfigurationException, SAXException {
+		File input_f=new File(input);
+		String dir=input_f.getParent();
+		String fi=input_f.getName();
+		String output="track_"+fi;
+		if(dir!=null && !dir.isEmpty())
+			output=dir+"/"+"track_"+fi;
 		// function to be called, return a list of tracks
 		LinkedHashMap<Integer, ArrayList<detection>> data = util_tracker.load_mot(input);
 		LinkedHashMap<Integer, track> tracks = track_radius(data, 0.3, 10.0, 10.0, 1.0, 60, 125.0, 0.5, 10, 1.0,
-				"track_" + input);
+				output);
 		return tracks;
 	}
 }

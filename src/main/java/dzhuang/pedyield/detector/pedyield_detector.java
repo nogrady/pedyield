@@ -35,20 +35,20 @@ public class pedyield_detector {
 
 	public static void main(String[] args) throws IOException, SAXException, ParserConfigurationException {
 		Options options = new Options();
-		Option input = new Option("ip", "ped_input", true, "input file path of the pedestrian data");
-		input.setRequired(true);
-		options.addOption(input);
+		Option input_vehicle = new Option("ip", "ped_input", true, "input file path of the pedestrian data");
+		input_vehicle.setRequired(true);
+		options.addOption(input_vehicle);
 
-		Option output = new Option("iv", "veh_output", true, "input file path of the vehicle data");
-		output.setRequired(true);
-		options.addOption(output);
+		Option input_pedestrian = new Option("iv", "veh_output", true, "input file path of the vehicle data");
+		input_pedestrian.setRequired(true);
+		options.addOption(input_pedestrian);
 
 		Option threshold_not_yield = new Option("t1", "threshold_not_yield", true, "the threshold of not yield");
-		output.setRequired(false);
+		threshold_not_yield.setRequired(false);
 		options.addOption(threshold_not_yield);
 
 		Option threshold_yield = new Option("t2", "threshold_yield", true, "the threshold of yield");
-		output.setRequired(false);
+		threshold_yield.setRequired(false);
 		options.addOption(threshold_yield);
 
 		CommandLineParser parser = new DefaultParser();
